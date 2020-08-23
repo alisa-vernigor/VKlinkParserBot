@@ -1,6 +1,7 @@
 import requests
 import vk_api
 import telegram
+from telegram import InputMediaPhoto, InputMediaVideo, InputMedia
 from telegram.ext import MessageHandler, Updater, Dispatcher, CommandHandler, Filters
 from settings import service_key, test_id, token
 from my_parser import Parser
@@ -17,23 +18,23 @@ def start_help(update, context):
     )
 
 def links(update, context):
-    print("I am in links")
-    path = parser.make_directory()
     try:
-        parser.parse_link(update.message.text, path)
-        for f in os.listdir(path):
-            print(f)
-            if f[-1] == "4":
-                print("here")
-                context.bot.send_video(chat_id=update.message.chat_id, video=open(f"{path}\\{f}", 'rb'), timeout=40)
+        urls = parser.parse_link(update.message.text)
+        album = []
+        for url, url_type in urls:
+            if url_type == Parser.UrlType.VIDEO:
+                album.append(InputMediaVideo(media=url))
+            elif url_type == Parser.UrlType.PHOTO:
+                album.append(InputMediaPhoto(media=url))
+        print(album)
+        context.bot.send_media_group(chat_id=update.message.chat_id, media=album)
     except Exception as e:
         pass
-    parser.delete_directory(path)
 
 
 start_handler = CommandHandler('start', start_help)
 help_handler = CommandHandler('help', start_help)
-links_handler = MessageHandler(filters=Filters.text, callback=links)
+links_handler = MessageHandler(filters=Filters.regex(r'(https://)?vk.com(.)*'), callback=links)
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
